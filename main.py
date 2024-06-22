@@ -7,6 +7,8 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score
 from sklearn.metrics import confusion_matrix
 import seaborn as sns
 import matplotlib.pyplot as plt
+import flet as ft
+
 
 def read_files_from_directory(directory_path, label):
     """讀取指定目錄下所有檔案的內容，並為每個檔案分配標籤"""
@@ -71,3 +73,96 @@ plt.xlabel('Predicted')
 plt.ylabel('Actual')
 plt.title('Confusion Matrix')
 plt.savefig('confusion_matrix.png')
+
+
+def main(page: ft.Page):
+    page.title = "垃圾郵件檢測器"
+    page.padding = 10
+    page.theme_mode = ft.ThemeMode.LIGHT
+    page.window.width = 800  # 設置視窗寬度
+    page.window.height = 600  # 設置視窗高度
+    page.window.resizable = False  # 禁止調整視窗大小
+
+    def pick_files_result(e: ft.FilePickerResultEvent):
+        if e.files:
+            selected_file.value = e.files[0].name
+            selected_file.update()
+            
+            file_path = e.files[0].path
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as file:
+                content = file.read()
+            email_content.value = content
+            email_content.update()
+            check_button.disabled = False
+        else:
+            selected_file.value = "未選擇文件"
+            email_content.value = ""
+            check_button.disabled = True
+        selected_file.update()
+        email_content.update()
+        check_button.update()
+
+    pick_files_dialog = ft.FilePicker(on_result=pick_files_result)
+    selected_file = ft.Text(size=14, color=ft.colors.BLUE)
+    email_content = ft.TextField(
+        multiline=True,
+        read_only=True,
+        min_lines=15,
+        max_lines=15,
+        expand=True,
+        border_color=ft.colors.OUTLINE,
+        text_size=12
+    )
+
+    def check_spam(e):
+        if not pick_files_dialog.result or not pick_files_dialog.result.files:
+            return
+
+        file_path = pick_files_dialog.result.files[0].path
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as file:
+            content = file.read()
+
+        tfidf_vector = vectorizer.transform([content])
+        spam_prob = nb_classifier.predict_proba(tfidf_vector)[0][1]
+
+        result_text.value = f"垃圾郵件機率: {spam_prob:.2%}"
+        result_text.color = ft.colors.RED if spam_prob > 0.5 else ft.colors.GREEN
+        result_text.update()
+
+    check_button = ft.ElevatedButton("檢查", on_click=check_spam, disabled=True)
+    result_text = ft.Text(size=14, weight=ft.FontWeight.BOLD)
+
+    left_column = ft.Column([
+        ft.Text("垃圾郵件檢測", size=20, weight=ft.FontWeight.BOLD),
+        ft.Container(height=10),
+        ft.Row([
+            ft.ElevatedButton(
+                "選擇郵件文件",
+                icon=ft.icons.UPLOAD_FILE,
+                on_click=lambda _: pick_files_dialog.pick_files(allow_multiple=False)
+            ),
+        ]),
+        ft.Container(height=5),
+        selected_file,
+        ft.Container(height=10),
+        check_button,
+        ft.Container(height=10),
+        result_text,
+    ], alignment=ft.MainAxisAlignment.START, expand=1)
+
+    right_column = ft.Column([
+        ft.Text("郵件內容:", size=16, weight=ft.FontWeight.BOLD),
+        ft.Container(height=5),
+        email_content
+    ], expand=2)
+
+    page.overlay.append(pick_files_dialog)
+    page.add(
+        ft.Row([
+            ft.Container(content=left_column, padding=10, border=ft.border.all(1, ft.colors.OUTLINE), border_radius=10, width=250),
+            ft.Container(width=10),
+            ft.Container(content=right_column, padding=10, border=ft.border.all(1, ft.colors.OUTLINE), border_radius=10, expand=True)
+        ], expand=True)
+    )
+
+ft.app(target=main)
