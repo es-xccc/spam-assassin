@@ -9,6 +9,17 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import flet as ft
 
+import os
+import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, precision_score, recall_score
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
+import matplotlib.pyplot as plt
+import flet as ft
+
 
 def read_files_from_directory(directory_path, label):
     """讀取指定目錄下所有檔案的內容，並為每個檔案分配標籤"""
@@ -48,14 +59,14 @@ tfidf_matrix = vectorizer.fit_transform(contents)
 # 使用分層抽樣分割訓練集和測試集
 X_train, X_test, y_train, y_test = train_test_split(tfidf_matrix, labels, test_size=0.2, stratify=labels, random_state=42)
 
-# 創建朴素貝葉斯分類器實體
-nb_classifier = MultinomialNB()
+# 創建隨機森林分類器實體
+rf_classifier = RandomForestClassifier(n_estimators=100, random_state=42)
 
 # 使用訓練集訓練模型
-nb_classifier.fit(X_train, y_train)
+rf_classifier.fit(X_train, y_train)
 
 # 使用測試集進行預測
-y_pred = nb_classifier.predict(X_test)
+y_pred = rf_classifier.predict(X_test)
 
 # 計算準確率
 accuracy = accuracy_score(y_test, y_pred)
@@ -94,13 +105,17 @@ def main(page: ft.Page):
             email_content.value = content
             email_content.update()
             check_button.disabled = False
+            result_text.value = ""
         else:
             selected_file.value = "未選擇文件"
             email_content.value = ""
             check_button.disabled = True
+            result_text.value = ""
+        # 更新所有相關元件
         selected_file.update()
         email_content.update()
         check_button.update()
+        result_text.update()
 
     pick_files_dialog = ft.FilePicker(on_result=pick_files_result)
     selected_file = ft.Text(size=14, color=ft.colors.BLUE)
@@ -123,10 +138,14 @@ def main(page: ft.Page):
             content = file.read()
 
         tfidf_vector = vectorizer.transform([content])
-        spam_prob = nb_classifier.predict_proba(tfidf_vector)[0][1]
+        prediction = rf_classifier.predict(tfidf_vector)[0]
 
-        result_text.value = f"垃圾郵件機率: {spam_prob:.2%}"
-        result_text.color = ft.colors.RED if spam_prob > 0.5 else ft.colors.GREEN
+        if prediction == 1:
+            result_text.value = "這是垃圾郵件"
+            result_text.color = ft.colors.RED
+        else:
+            result_text.value = "這不是垃圾郵件"
+            result_text.color = ft.colors.GREEN
         result_text.update()
 
     check_button = ft.ElevatedButton("檢查", on_click=check_spam, disabled=True)
