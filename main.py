@@ -2,7 +2,6 @@ import os
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
-from sklearn.naive_bayes import MultinomialNB
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, precision_score, recall_score
 from sklearn.metrics import confusion_matrix
@@ -37,14 +36,14 @@ for path, label in paths_and_labels:
     contents.extend(path_contents)
     labels.extend(path_labels)
 
-# 現在，`contents` 包含所有檔案的內容，`labels` 包含對應的標籤
+# contents 包含所有檔案的內容，labels 包含對應的標籤
 
 # 計算TF-IDF
 vectorizer = TfidfVectorizer()
 tfidf_matrix = vectorizer.fit_transform(contents)
 
-# `tfidf_matrix` 是一個稀疏矩陣，包含了所有檔案的TF-IDF值
-# `labels` 包含每個檔案的類別標籤
+# tfidf_matrix 是一個稀疏矩陣，包含了所有檔案的 TF-IDF 值
+# labels 包含每個檔案的類別標籤
 
 # 使用分層抽樣分割訓練集和測試集
 X_train, X_test, y_train, y_test = train_test_split(tfidf_matrix, labels, test_size=0.2, stratify=labels, random_state=42)
